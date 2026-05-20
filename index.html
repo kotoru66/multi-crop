@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>✂️ マルチクロップ</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1c1c1e;
+      color: #e0e0e0;
+      font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      color: #f5f5f5;
+      margin-bottom: 20px;
+      letter-spacing: 0.05em;
+    }
+    #dropZone {
+      border: 2px dashed #555;
+      border-radius: 16px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      background: #2c2c2e;
+      max-width: 900px;
+      margin: 0 auto 24px;
+      transition: all 0.2s;
+    }
+    #dropZone.dragover { border-color: #0a84ff; background: #1c3a5f; }
+    #dropZone p { color: #888; font-size: 1rem; }
+    #dropZone .icon { font-size: 3rem; margin-bottom: 12px; }
+    #fileInput { display: none; }
+
+    #editor {
+      max-width: 900px;
+      margin: 0 auto;
+      display: none;
+    }
+
+    /* アスペクト比選択 */
+    .ratio-selector {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .ratio-btn {
+      padding: 8px 14px;
+      border: 1px solid #555;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      background: #2c2c2e;
+      color: #aaa;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ratio-btn:hover { background: #3a3a3c; }
+    .ratio-btn.active {
+      background: #0a84ff;
+      border-color: #0a84ff;
+      color: #fff;
+      font-weight: 600;
+    }
+    .ratio-btn .shape {
+      display: inline-block;
+      border: 1.5px solid currentColor;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .shape-1-1  { width: 14px; height: 14px; }
+    .shape-3-2  { width: 18px; height: 12px; }
+    .shape-2-3  { width: 12px; height: 18px; }
+    .shape-16-9 { width: 22px; height: 12px; }
+    .shape-9-16 { width: 11px; height: 20px; }
+
+    /* サイズ選択ボタン */
+    .size-btn {
+      padding: 7px 16px;
+      border: 1px solid #555;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      background: #2c2c2e;
+      color: #aaa;
+      transition: all 0.2s;
+    }
+    .size-btn:hover { background: #3a3a3c; }
+    .size-btn.active {
+      background: #4cd964;
+      border-color: #4cd964;
+      color: #000;
+      font-weight: 600;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 9px 22px;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+    .btn-reset  { background: #3a3a3c; color: #e0e0e0; }
+    .btn-reset:hover { background: #555; }
+    .btn-center { background: #2c2c2e; border: 1px solid #555; color: #aaa; }
+    .btn-center:hover { background: #3a3a3c; }
+    .btn-dl {
+      background: #0a84ff;
+      color: #fff;
+      font-weight: 600;
+      padding: 9px 28px;
+    }
+    .btn-dl:hover { background: #0070d8; }
+    .btn-nav { background: #2c2c2e; border: 1px solid #555; color: #aaa; }
+    .btn-nav:hover { background: #3a3a3c; }
+    .btn-nav:disabled { opacity: 0.3; cursor: default; }
+
+    #hint {
+      text-align: center;
+      color: #666;
+      font-size: 0.82rem;
+      margin-bottom: 12px;
+    }
+
+    #canvasWrap {
+      text-align: center;
+      margin-bottom: 14px;
+      user-select: none;
+    }
+    #cropCanvas {
+      border-radius: 12px;
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      cursor: move;
+    }
+
+    .info-bar {
+      background: #2c2c2e;
+      border-radius: 10px;
+      padding: 11px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.88rem;
+      color: #888;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .info-bar span { color: #e0e0e0; font-weight: 500; }
+
+    /* 品質チェックパネル */
+    #qualityCheck {
+      background: #2c2c2e;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-top: 10px;
+    }
+    .qc-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #aaa;
+      margin-bottom: 10px;
+      letter-spacing: 0.04em;
+    }
+    .qc-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid #3a3a3c;
+      font-size: 0.88rem;
+    }
+    .qc-row:last-child { border-bottom: none; }
+    .qc-label { width: 110px; color: #e0e0e0; font-weight: 500; }
+    .qc-badge {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      min-width: 54px;
+      text-align: center;
+    }
+    .badge-ok { background: #1a4a1a; color: #4cd964; font-family: Arial, 'Helvetica Neue', sans-serif; }
+    .badge-ng { background: #4a1a1a; color: #ff6b6b; font-family: Arial, 'Helvetica Neue', sans-serif; }
+    .qc-size  { color: #666; font-size: 0.82rem; margin-left: auto; }
+  </style>
+</head>
+<body>
+  <h1>✂️ マルチクロップ</h1>
+
+  <div id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <div class="icon">🖼️</div>
+    <p>画像をドラッグ＆ドロップ または クリックで選択</p>
+    <p style="margin-top:8px; font-size:0.8rem;">複数画像対応 / JPG・PNG・WebP</p>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" multiple>
+
+  <div id="editor">
+    <!-- アスペクト比選択 -->
+    <div class="ratio-selector">
+      <button class="ratio-btn active" data-w="1" data-h="1"><span class="shape shape-1-1"></span>1:1 正方形</button>
+      <button class="ratio-btn" data-w="3" data-h="2"><span class="shape shape-3-2"></span>3:2 横</button>
+      <button class="ratio-btn" data-w="2" data-h="3"><span class="shape shape-2-3"></span>2:3 縦</button>
+      <button class="ratio-btn" data-w="16" data-h="9"><span class="shape shape-16-9"></span>16:9 横</button>
+      <button class="ratio-btn" data-w="9" data-h="16"><span class="shape shape-9-16"></span>9:16 縦</button>
+    </div>
+
+    <!-- 出力サイズ選択 -->
+    <div class="ratio-selector">
+      <button class="size-btn" data-size="500">500px</button>
+      <button class="size-btn active" data-size="1000">1000px</button>
+      <button class="size-btn" data-size="2000">2000px</button>
+      <button class="size-btn" data-size="4000">4000px</button>
+      <button class="size-btn" data-size="0">原寸</button>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-reset" onclick="resetViewer()">＋ 別の画像を開く</button>
+      <button class="btn btn-nav" id="prevBtn" onclick="prevImage()">← 前</button>
+      <button class="btn btn-center" onclick="centerCrop()">⊙ センタリング</button>
+      <button class="btn btn-dl" onclick="downloadCrop()">⬇ ダウンロード</button>
+      <button class="btn btn-nav" id="nextBtn" onclick="nextImage()">次 →</button>
+    </div>
+
+    <p id="hint">ドラッグで移動 / 四隅でサイズ変更 / ↑↓←→キーで1px微調整（Shift+矢印で10px）</p>
+
+    <div id="canvasWrap">
+      <canvas id="cropCanvas"></canvas>
+    </div>
+
+    <div class="info-bar">
+      <div>画像: <span id="imgInfo">-</span></div>
+      <div>比率: <span id="ratioInfo">1:1</span></div>
+      <div>出力サイズ: <span id="outSize">-</span></div>
+      <div><span id="counter">-</span></div>
+    </div>
+
+    <!-- 品質チェック -->
+    <div id="qualityCheck">
+      <div class="qc-title">出力品質チェック（長辺基準）</div>
+      <div class="qc-row">
+        <span class="qc-label">FHD</span>
+        <span class="qc-badge" id="qc-fhd">—</span>
+        <span class="qc-size">長辺 1920 px以上　SNS・Web・スライド</span>
+      </div>
+      <div class="qc-row">
+        <span class="qc-label">4K</span>
+        <span class="qc-badge" id="qc-4k">—</span>
+        <span class="qc-size">長辺 3840 px以上　4K モニター・動画</span>
+      </div>
+      <div class="qc-row">
+        <span class="qc-label">パン・ズーム</span>
+        <span class="qc-badge" id="qc-pz">—</span>
+        <span class="qc-size">長辺 6000 px以上　動画内でパン・ズーム</span>
+      </div>
+      <div class="qc-row">
+        <span class="qc-label">8K</span>
+        <span class="qc-badge" id="qc-8k">—</span>
+        <span class="qc-size">長辺 7680 px以上　8K 対応（参考）</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ===== 状態 =====
+  const state = {
+    images: [],          // {name, img, originalName}
+    current: 0,
+    aspectW: 1,
+    aspectH: 1,
+    crop: { x: 0, y: 0, w: 0, h: 0 },  // 元画像座標系
+    dragging: null,      // 'move' | 'nw' | 'ne' | 'sw' | 'se' | null
+    dragStart: null,
+    outputSize: 1000,    // 長辺の出力サイズ（0 = 原寸）
+  };
+
+  const canvas = document.getElementById('cropCanvas');
+  const ctx = canvas.getContext('2d');
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const editor = document.getElementById('editor');
+
+  // ===== ファイル読み込み =====
+  fileInput.addEventListener('change', e => loadFiles(e.target.files));
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    loadFiles(e.dataTransfer.files);
+  });
+
+  async function loadFiles(files) {
+    const imgs = [];
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue;
+      const img = await loadImage(file);
+      imgs.push({ name: file.name, img, originalName: file.name });
+    }
+    if (imgs.length === 0) return;
+    state.images = imgs;
+    state.current = 0;
+    dropZone.style.display = 'none';
+    editor.style.display = 'block';
+    showImage();
+  }
+
+  function loadImage(file) {
+    return new Promise(resolve => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.src = url;
+    });
+  }
+
+  // ===== アスペクト比切替 =====
+  document.querySelectorAll('.ratio-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.aspectW = parseFloat(btn.dataset.w);
+      state.aspectH = parseFloat(btn.dataset.h);
+      document.getElementById('ratioInfo').textContent = `${state.aspectW}:${state.aspectH}`;
+      centerCrop();
+    });
+  });
+
+  // ===== 出力サイズ切替 =====
+  document.querySelectorAll('.size-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.outputSize = parseInt(btn.dataset.size);
+      updateOutSizeDisplay();
+    });
+  });
+
+  function updateOutSizeDisplay() {
+    const el = document.getElementById('outSize');
+    let outW, outH;
+    if (state.outputSize === 0) {
+      outW = Math.round(state.crop.w);
+      outH = Math.round(state.crop.h);
+      el.textContent = `${outW} × ${outH} px（原寸）`;
+    } else {
+      const ratio = state.aspectW / state.aspectH;
+      if (ratio >= 1) {
+        outW = state.outputSize;
+        outH = Math.round(state.outputSize / ratio);
+      } else {
+        outH = state.outputSize;
+        outW = Math.round(state.outputSize * ratio);
+      }
+      el.textContent = `${outW} × ${outH} px`;
+    }
+    updateQualityCheck(outW, outH);
+  }
+
+  // ===== 品質チェック =====
+  function updateQualityCheck(w, h) {
+    const longSide = Math.max(w, h);
+    const checks = [
+      { id: 'qc-fhd', min: 1920 },
+      { id: 'qc-4k',  min: 3840 },
+      { id: 'qc-pz',  min: 6000 },
+      { id: 'qc-8k',  min: 7680 },
+    ];
+    checks.forEach(({ id, min }) => {
+      const ok = longSide >= min;
+      const el = document.getElementById(id);
+      el.textContent = ok ? '✓' : '×';
+      el.className = 'qc-badge ' + (ok ? 'badge-ok' : 'badge-ng');
+    });
+  }
+
+  // ===== 画像表示 =====
+  function showImage() {
+    const item = state.images[state.current];
+    const img = item.img;
+
+    // キャンバスサイズは画像のサイズ（最大幅で制限）
+    const maxW = 860;
+    const scale = img.width > maxW ? maxW / img.width : 1;
+    canvas.width = img.width * scale;
+    canvas.height = img.height * scale;
+    canvas._scale = scale;
+    canvas._img = img;
+
+    document.getElementById('imgInfo').textContent = `${item.name} (${img.width}×${img.height})`;
+    document.getElementById('counter').textContent = `${state.current + 1} / ${state.images.length}`;
+    document.getElementById('prevBtn').disabled = state.current === 0;
+    document.getElementById('nextBtn').disabled = state.current === state.images.length - 1;
+
+    centerCrop();
+  }
+
+  function centerCrop() {
+    const img = canvas._img;
+    if (!img) return;
+    const imgRatio = img.width / img.height;
+    const cropRatio = state.aspectW / state.aspectH;
+    let cw, ch;
+    if (imgRatio > cropRatio) {
+      ch = img.height;
+      cw = ch * cropRatio;
+    } else {
+      cw = img.width;
+      ch = cw / cropRatio;
+    }
+    state.crop.w = cw;
+    state.crop.h = ch;
+    state.crop.x = (img.width - cw) / 2;
+    state.crop.y = (img.height - ch) / 2;
+    redraw();
+  }
+
+  function resetCrop() {
+    centerCrop();
+  }
+
+  // ===== 描画 =====
+  function redraw() {
+    const img = canvas._img;
+    if (!img) return;
+    const s = canvas._scale;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const cx = state.crop.x * s;
+    const cy = state.crop.y * s;
+    const cw = state.crop.w * s;
+    const ch = state.crop.h * s;
+
+    // 暗いオーバーレイ（クロップ外）
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, 0, canvas.width, cy);
+    ctx.fillRect(0, cy + ch, canvas.width, canvas.height - cy - ch);
+    ctx.fillRect(0, cy, cx, ch);
+    ctx.fillRect(cx + cw, cy, canvas.width - cx - cw, ch);
+
+    // クロップ枠
+    ctx.strokeStyle = '#0a84ff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cx, cy, cw, ch);
+
+    // 三分割ガイド
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx + cw * i / 3, cy);
+      ctx.lineTo(cx + cw * i / 3, cy + ch);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + ch * i / 3);
+      ctx.lineTo(cx + cw, cy + ch * i / 3);
+      ctx.stroke();
+    }
+
+    // 四隅ハンドル
+    ctx.fillStyle = '#0a84ff';
+    const hs = 8;
+    [[cx, cy], [cx + cw, cy], [cx, cy + ch], [cx + cw, cy + ch]].forEach(([x, y]) => {
+      ctx.fillRect(x - hs/2, y - hs/2, hs, hs);
+    });
+
+    updateOutSizeDisplay();
+  }
+
+  // ===== マウス操作 =====
+  function getMousePos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width;
+    const sy = canvas.height / rect.height;
+    return {
+      x: (e.clientX - rect.left) * sx / canvas._scale,
+      y: (e.clientY - rect.top) * sy / canvas._scale,
+    };
+  }
+
+  function hitTest(p) {
+    const { x, y, w, h } = state.crop;
+    const margin = 12 / canvas._scale;
+    const corners = {
+      nw: { x, y },
+      ne: { x: x + w, y },
+      sw: { x, y: y + h },
+      se: { x: x + w, y: y + h },
+    };
+    for (const k in corners) {
+      const c = corners[k];
+      if (Math.abs(p.x - c.x) < margin && Math.abs(p.y - c.y) < margin) return k;
+    }
+    if (p.x >= x && p.x <= x + w && p.y >= y && p.y <= y + h) return 'move';
+    return null;
+  }
+
+  canvas.addEventListener('mousedown', e => {
+    const p = getMousePos(e);
+    const hit = hitTest(p);
+    if (hit) {
+      state.dragging = hit;
+      state.dragStart = { p, crop: { ...state.crop } };
+    }
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    const p = getMousePos(e);
+    if (state.dragging) {
+      const start = state.dragStart;
+      const dx = p.x - start.p.x;
+      const dy = p.y - start.p.y;
+      const img = canvas._img;
+      const ratio = state.aspectW / state.aspectH;
+
+      if (state.dragging === 'move') {
+        let nx = start.crop.x + dx;
+        let ny = start.crop.y + dy;
+        nx = Math.max(0, Math.min(img.width - start.crop.w, nx));
+        ny = Math.max(0, Math.min(img.height - start.crop.h, ny));
+        state.crop.x = nx;
+        state.crop.y = ny;
+      } else {
+        // 四隅リサイズ（アスペクト比維持）
+        let nw, nh, nx, ny;
+        if (state.dragging === 'se') {
+          nw = Math.max(20, start.crop.w + dx);
+          nh = nw / ratio;
+          nx = start.crop.x;
+          ny = start.crop.y;
+        } else if (state.dragging === 'sw') {
+          nw = Math.max(20, start.crop.w - dx);
+          nh = nw / ratio;
+          nx = start.crop.x + (start.crop.w - nw);
+          ny = start.crop.y;
+        } else if (state.dragging === 'ne') {
+          nw = Math.max(20, start.crop.w + dx);
+          nh = nw / ratio;
+          nx = start.crop.x;
+          ny = start.crop.y + (start.crop.h - nh);
+        } else if (state.dragging === 'nw') {
+          nw = Math.max(20, start.crop.w - dx);
+          nh = nw / ratio;
+          nx = start.crop.x + (start.crop.w - nw);
+          ny = start.crop.y + (start.crop.h - nh);
+        }
+        // 範囲内に収める
+        if (nx < 0) { const diff = -nx; nx = 0; nw -= diff; nh = nw / ratio; }
+        if (ny < 0) { const diff = -ny; ny = 0; nh -= diff; nw = nh * ratio; }
+        if (nx + nw > img.width) nw = img.width - nx, nh = nw / ratio;
+        if (ny + nh > img.height) nh = img.height - ny, nw = nh * ratio;
+        state.crop.x = nx;
+        state.crop.y = ny;
+        state.crop.w = nw;
+        state.crop.h = nh;
+      }
+      redraw();
+    } else {
+      const hit = hitTest(p);
+      canvas.style.cursor = hit === 'move' ? 'move' :
+        (hit === 'nw' || hit === 'se') ? 'nwse-resize' :
+        (hit === 'ne' || hit === 'sw') ? 'nesw-resize' : 'default';
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    state.dragging = null;
+    state.dragStart = null;
+  });
+
+  // ===== ナビゲーション =====
+  function prevImage() {
+    if (state.current > 0) {
+      state.current--;
+      showImage();
+    }
+  }
+  function nextImage() {
+    if (state.current < state.images.length - 1) {
+      state.current++;
+      showImage();
+    }
+  }
+
+  // ===== 別の画像を開く =====
+  function resetViewer() {
+    state.images = [];
+    state.current = 0;
+    fileInput.value = '';
+    editor.style.display = 'none';
+    dropZone.style.display = 'block';
+  }
+
+  // ===== キーボードで微調整 =====
+  document.addEventListener('keydown', e => {
+    if (state.images.length === 0) return;
+    // 入力欄にフォーカスがある場合は無視
+    if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+    const step = e.shiftKey ? 10 : 1;
+    const img = canvas._img;
+    if (!img) return;
+
+    let moved = false;
+    if (e.key === 'ArrowLeft')  { state.crop.x = Math.max(0, state.crop.x - step); moved = true; }
+    if (e.key === 'ArrowRight') { state.crop.x = Math.min(img.width - state.crop.w, state.crop.x + step); moved = true; }
+    if (e.key === 'ArrowUp')    { state.crop.y = Math.max(0, state.crop.y - step); moved = true; }
+    if (e.key === 'ArrowDown')  { state.crop.y = Math.min(img.height - state.crop.h, state.crop.y + step); moved = true; }
+
+    if (moved) {
+      e.preventDefault();
+      redraw();
+    }
+  });
+
+  // ===== ダウンロード =====
+  function downloadCrop() {
+    const img = canvas._img;
+    const out = document.createElement('canvas');
+
+    // 出力サイズを計算（長辺基準）
+    let outW, outH;
+    if (state.outputSize === 0) {
+      // 原寸
+      outW = Math.round(state.crop.w);
+      outH = Math.round(state.crop.h);
+    } else {
+      const ratio = state.crop.w / state.crop.h;
+      if (ratio >= 1) {
+        outW = state.outputSize;
+        outH = Math.round(state.outputSize / ratio);
+      } else {
+        outH = state.outputSize;
+        outW = Math.round(state.outputSize * ratio);
+      }
+    }
+
+    // アップスケール警告（元のクロップサイズより出力サイズが大きい時）
+    const cropLong = Math.max(state.crop.w, state.crop.h);
+    const outLong = Math.max(outW, outH);
+    if (outLong > cropLong) {
+      const ratio = (outLong / cropLong).toFixed(2);
+      const msg =
+        `⚠️ アップスケール（拡大）になります\n\n` +
+        `元のサイズ : ${Math.round(state.crop.w)} × ${Math.round(state.crop.h)} px\n` +
+        `出力サイズ : ${outW} × ${outH} px（約 ${ratio} 倍）\n\n` +
+        `小さい画像を大きく引き伸ばすと、ぼやけたり粗くなったりして\n` +
+        `画質が劣化します。あまりおすすめしません。\n\n` +
+        `このまま出力しますか？`;
+      if (!confirm(msg)) return;
+    }
+
+    out.width = outW;
+    out.height = outH;
+
+    const octx = out.getContext('2d');
+    octx.imageSmoothingEnabled = true;
+    octx.imageSmoothingQuality = 'high';
+    octx.drawImage(
+      img,
+      state.crop.x, state.crop.y, state.crop.w, state.crop.h,
+      0, 0, outW, outH
+    );
+    const item = state.images[state.current];
+    const baseName = item.originalName.replace(/\.[^.]+$/, '');
+    const ratioTag = `${state.aspectW}x${state.aspectH}`;
+    const sizeTag = state.outputSize === 0 ? 'orig' : `${state.outputSize}px`;
+    const link = document.createElement('a');
+    link.download = `${baseName}_${ratioTag}_${sizeTag}.jpg`;
+    link.href = out.toDataURL('image/jpeg', 0.95);
+    link.click();
+
+    // ダウンロード後、次の画像へ自動で進む
+    if (state.current < state.images.length - 1) {
+      setTimeout(() => nextImage(), 200);
+    }
+  }
+</script>
+</body>
+</html>
