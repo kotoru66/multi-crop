@@ -101,6 +101,24 @@
       color: #000;
       font-weight: 600;
     }
+    .format-btn {
+      padding: 7px 16px;
+      border: 1px solid #555;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      background: #2c2c2e;
+      color: #aaa;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+    .format-btn:hover { background: #3a3a3c; }
+    .format-btn.active {
+      background: #ffcc00;
+      border-color: #ffcc00;
+      color: #000;
+      font-weight: 600;
+    }
 
     .btn-row {
       display: flex;
@@ -235,6 +253,13 @@
       <button class="size-btn" data-size="0">原寸</button>
     </div>
 
+    <!-- 保存形式選択 -->
+    <div class="ratio-selector">
+      <button class="format-btn active" data-format="jpg">JPG</button>
+      <button class="format-btn" data-format="png">PNG</button>
+      <button class="format-btn" data-format="webp">WebP</button>
+    </div>
+
     <div class="btn-row">
       <button class="btn btn-reset" onclick="resetViewer()">＋ 別の画像を開く</button>
       <button class="btn btn-nav" id="prevBtn" onclick="prevImage()">← 前</button>
@@ -253,6 +278,8 @@
       <div>画像: <span id="imgInfo">-</span></div>
       <div>比率: <span id="ratioInfo">1:1</span></div>
       <div>出力サイズ: <span id="outSize">-</span></div>
+      <div>保存形式: <span id="formatInfo">JPG</span></div>
+      <div>予想容量: <span id="fileSizeInfo">-</span></div>
       <div><span id="counter">-</span></div>
     </div>
 
@@ -293,6 +320,9 @@
     dragging: null,      // 'move' | 'nw' | 'ne' | 'sw' | 'se' | null
     dragStart: null,
     outputSize: 1000,    // 長辺の出力サイズ（0 = 原寸）
+    outputFormat: 'jpg', // jpg | png | webp
+    fileSizeTimer: null,
+    fileSizeSeq: 0,
   };
 
   const canvas = document.getElementById('cropCanvas');
@@ -357,6 +387,17 @@
     });
   });
 
+  // ===== 保存形式切替 =====
+  document.querySelectorAll('.format-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.outputFormat = btn.dataset.format;
+      document.getElementById('formatInfo').textContent = state.outputFormat.toUpperCase();
+      updateOutSizeDisplay();
+    });
+  });
+
   function updateOutSizeDisplay() {
     const el = document.getElementById('outSize');
     let outW, outH;
@@ -376,6 +417,76 @@
       el.textContent = `${outW} × ${outH} px`;
     }
     updateQualityCheck(outW, outH);
+    scheduleFileSizeEstimate(outW, outH);
+  }
+
+  function getFormatConfig() {
+    const formatMap = {
+      jpg:  { ext: 'jpg',  mime: 'image/jpeg', quality: 0.95 },
+      png:  { ext: 'png',  mime: 'image/png' },
+      webp: { ext: 'webp', mime: 'image/webp', quality: 0.95 },
+    };
+    return formatMap[state.outputFormat] || formatMap.jpg;
+  }
+
+  function drawOutputCanvas(outW, outH) {
+    const img = canvas._img;
+    if (!img) return null;
+
+    const out = document.createElement('canvas');
+    out.width = outW;
+    out.height = outH;
+
+    const octx = out.getContext('2d');
+    octx.imageSmoothingEnabled = true;
+    octx.imageSmoothingQuality = 'high';
+
+    // JPGは透明を扱えないため、背景を白で塗る
+    if (state.outputFormat === 'jpg') {
+      octx.fillStyle = '#ffffff';
+      octx.fillRect(0, 0, outW, outH);
+    }
+
+    octx.drawImage(
+      img,
+      state.crop.x, state.crop.y, state.crop.w, state.crop.h,
+      0, 0, outW, outH
+    );
+
+    return out;
+  }
+
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes)) return '-';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  function scheduleFileSizeEstimate(outW, outH) {
+    const el = document.getElementById('fileSizeInfo');
+    if (!canvas._img) {
+      el.textContent = '-';
+      return;
+    }
+
+    el.textContent = '計算中…';
+    clearTimeout(state.fileSizeTimer);
+    const seq = ++state.fileSizeSeq;
+
+    state.fileSizeTimer = setTimeout(() => {
+      const format = getFormatConfig();
+      const out = drawOutputCanvas(outW, outH);
+      if (!out || !out.toBlob) {
+        el.textContent = '-';
+        return;
+      }
+
+      out.toBlob(blob => {
+        if (seq !== state.fileSizeSeq) return;
+        el.textContent = blob ? formatBytes(blob.size) : '-';
+      }, format.mime, format.quality);
+    }, 250);
   }
 
   // ===== 品質チェック =====
@@ -639,8 +750,6 @@
   // ===== ダウンロード =====
   function downloadCrop() {
     const img = canvas._img;
-    const out = document.createElement('canvas');
-
     // 出力サイズを計算（長辺基準）
     let outW, outH;
     if (state.outputSize === 0) {
@@ -673,24 +782,17 @@
       if (!confirm(msg)) return;
     }
 
-    out.width = outW;
-    out.height = outH;
+    const out = drawOutputCanvas(outW, outH);
+    if (!out) return;
 
-    const octx = out.getContext('2d');
-    octx.imageSmoothingEnabled = true;
-    octx.imageSmoothingQuality = 'high';
-    octx.drawImage(
-      img,
-      state.crop.x, state.crop.y, state.crop.w, state.crop.h,
-      0, 0, outW, outH
-    );
     const item = state.images[state.current];
     const baseName = item.originalName.replace(/\.[^.]+$/, '');
     const ratioTag = `${state.aspectW}x${state.aspectH}`;
     const sizeTag = state.outputSize === 0 ? 'orig' : `${state.outputSize}px`;
+    const format = getFormatConfig();
     const link = document.createElement('a');
-    link.download = `${baseName}_${ratioTag}_${sizeTag}.jpg`;
-    link.href = out.toDataURL('image/jpeg', 0.95);
+    link.download = `${baseName}_${ratioTag}_${sizeTag}.${format.ext}`;
+    link.href = out.toDataURL(format.mime, format.quality);
     link.click();
 
     // ダウンロード後、次の画像へ自動で進む
