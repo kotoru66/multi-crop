@@ -119,6 +119,27 @@
       color: #000;
       font-weight: 600;
     }
+    .quality-btn {
+      padding: 7px 16px;
+      border: 1px solid #555;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      background: #2c2c2e;
+      color: #aaa;
+      transition: all 0.2s;
+    }
+    .quality-btn:hover { background: #3a3a3c; }
+    .quality-btn.active {
+      background: #bf5af2;
+      border-color: #bf5af2;
+      color: #fff;
+      font-weight: 600;
+    }
+    .quality-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
 
     .btn-row {
       display: flex;
@@ -260,6 +281,14 @@
       <button class="format-btn" data-format="webp">WebP</button>
     </div>
 
+    <!-- 画質選択（JPG / WebP） -->
+    <div class="ratio-selector" id="qualitySelector">
+      <button class="quality-btn active" data-quality="0.95">95% 高画質</button>
+      <button class="quality-btn" data-quality="0.80">80% 標準</button>
+      <button class="quality-btn" data-quality="0.50">50% 軽量</button>
+      <button class="quality-btn" data-quality="0.20">20% 超軽量</button>
+    </div>
+
     <div class="btn-row">
       <button class="btn btn-reset" onclick="resetViewer()">＋ 別の画像を開く</button>
       <button class="btn btn-nav" id="prevBtn" onclick="prevImage()">← 前</button>
@@ -279,6 +308,7 @@
       <div>比率: <span id="ratioInfo">1:1</span></div>
       <div>出力サイズ: <span id="outSize">-</span></div>
       <div>保存形式: <span id="formatInfo">JPG</span></div>
+      <div>画質: <span id="qualityInfo">95%</span></div>
       <div>予想容量: <span id="fileSizeInfo">-</span></div>
       <div><span id="counter">-</span></div>
     </div>
@@ -321,6 +351,7 @@
     dragStart: null,
     outputSize: 1000,    // 長辺の出力サイズ（0 = 原寸）
     outputFormat: 'jpg', // jpg | png | webp
+    outputQuality: 0.95, // JPG / WebP の画質
     fileSizeTimer: null,
     fileSizeSeq: 0,
   };
@@ -394,9 +425,35 @@
       btn.classList.add('active');
       state.outputFormat = btn.dataset.format;
       document.getElementById('formatInfo').textContent = state.outputFormat.toUpperCase();
+      updateQualityControls();
       updateOutSizeDisplay();
     });
   });
+
+  // ===== 画質切替 =====
+  document.querySelectorAll('.quality-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.quality-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.outputQuality = parseFloat(btn.dataset.quality);
+      document.getElementById('qualityInfo').textContent = `${Math.round(state.outputQuality * 100)}%`;
+      updateOutSizeDisplay();
+    });
+  });
+
+  function updateQualityControls() {
+    const isPng = state.outputFormat === 'png';
+    document.querySelectorAll('.quality-btn').forEach(btn => {
+      btn.disabled = isPng;
+    });
+
+    const qualityInfo = document.getElementById('qualityInfo');
+    if (isPng) {
+      qualityInfo.textContent = 'PNGは対象外';
+    } else {
+      qualityInfo.textContent = `${Math.round(state.outputQuality * 100)}%`;
+    }
+  }
 
   function updateOutSizeDisplay() {
     const el = document.getElementById('outSize');
@@ -422,9 +479,9 @@
 
   function getFormatConfig() {
     const formatMap = {
-      jpg:  { ext: 'jpg',  mime: 'image/jpeg', quality: 0.95 },
+      jpg:  { ext: 'jpg',  mime: 'image/jpeg', quality: state.outputQuality },
       png:  { ext: 'png',  mime: 'image/png' },
-      webp: { ext: 'webp', mime: 'image/webp', quality: 0.95 },
+      webp: { ext: 'webp', mime: 'image/webp', quality: state.outputQuality },
     };
     return formatMap[state.outputFormat] || formatMap.jpg;
   }
