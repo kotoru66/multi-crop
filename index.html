@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>マルチクロップ</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -54,6 +55,86 @@
       fill: #ffcc00;
       stroke: #1c1c1e;
       stroke-width: 1.4;
+    }
+
+    /* 使い方 */
+    .usage-panel {
+      max-width: 900px;
+      margin: -4px auto 20px;
+      background: #2c2c2e;
+      border: 1px solid #3a3a3c;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .usage-panel summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 18px;
+      color: #f5f5f5;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      user-select: none;
+    }
+    .usage-panel summary::-webkit-details-marker { display: none; }
+    .usage-panel summary::after {
+      content: '開く';
+      color: #0a84ff;
+      font-size: 0.78rem;
+      font-weight: 700;
+      border: 1px solid rgba(10, 132, 255, 0.45);
+      border-radius: 999px;
+      padding: 4px 10px;
+      flex: 0 0 auto;
+    }
+    .usage-panel[open] summary {
+      border-bottom: 1px solid #3a3a3c;
+    }
+    .usage-panel[open] summary::after { content: '閉じる'; }
+    .usage-content {
+      padding: 16px 18px 18px;
+      color: #c9c9c9;
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+    .usage-lead {
+      margin-bottom: 12px;
+      color: #e0e0e0;
+    }
+    .usage-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 18px;
+      margin-top: 12px;
+    }
+    .usage-content h2 {
+      font-size: 0.92rem;
+      color: #f5f5f5;
+      margin-bottom: 8px;
+    }
+    .usage-content ol,
+    .usage-content ul {
+      padding-left: 1.25em;
+    }
+    .usage-content li + li { margin-top: 4px; }
+    .privacy-note {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(76, 217, 100, 0.10);
+      color: #d7f7dd;
+      border: 1px solid rgba(76, 217, 100, 0.22);
+    }
+    .usage-small {
+      color: #888;
+      font-size: 0.82rem;
+      margin-top: 8px;
+    }
+    @media (max-width: 680px) {
+      .usage-grid { grid-template-columns: 1fr; }
+      .usage-panel { margin-top: -2px; }
     }
     #dropZone {
       border: 2px dashed #555;
@@ -459,6 +540,38 @@
     </svg>
     <span>マルチクロップ</span>
   </h1>
+
+  <details class="usage-panel">
+    <summary>📘 使い方・このアプリについて</summary>
+    <div class="usage-content">
+      <p class="usage-lead">マルチクロップは、画像を好きな比率で切り抜き、JPG / PNG / WebP で保存できるブラウザ用ツールです。</p>
+      <div class="usage-grid">
+        <section>
+          <h2>基本の使い方</h2>
+          <ol>
+            <li>画像をドラッグ＆ドロップ、またはクリックして選択します。</li>
+            <li>切り抜きたい比率を選びます。</li>
+            <li>出力サイズを選びます。</li>
+            <li>保存形式と画質を選びます。</li>
+            <li>必要なら圧縮後プレビューを確認します。</li>
+            <li>「ダウンロード」を押して保存します。</li>
+          </ol>
+        </section>
+        <section>
+          <h2>できること</h2>
+          <ul>
+            <li>複数画像をまとめて読み込み</li>
+            <li>1:1 / 3:2 / 4:3 / 16:9 などに切り抜き</li>
+            <li>JPG / PNG / WebP で保存</li>
+            <li>画質変更と予想容量の確認</li>
+            <li>圧縮後プレビューを100% / 200% / 400%で確認</li>
+          </ul>
+        </section>
+      </div>
+      <p class="privacy-note">🔒 選択した画像はブラウザ内だけで処理され、サーバーにはアップロードされません。</p>
+      <p class="usage-small">ヒント: 画質差が見えにくい場合は、圧縮後プレビューをクリックして200%または400%で確認してください。</p>
+    </div>
+  </details>
 
   <div id="dropZone" onclick="document.getElementById('fileInput').click()">
     <div class="icon">🖼️</div>
