@@ -277,6 +277,167 @@
     .badge-ok { background: #1a4a1a; color: #4cd964; font-family: Arial, 'Helvetica Neue', sans-serif; }
     .badge-ng { background: #4a1a1a; color: #ff6b6b; font-family: Arial, 'Helvetica Neue', sans-serif; }
     .qc-size  { color: #666; font-size: 0.82rem; margin-left: auto; }
+
+    /* 圧縮後プレビュー */
+    #compressedPreview {
+      background: #2c2c2e;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-top: 10px;
+    }
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .preview-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #aaa;
+      letter-spacing: 0.04em;
+    }
+    .preview-status {
+      color: #e0e0e0;
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+    .preview-body {
+      display: grid;
+      grid-template-columns: minmax(180px, 280px) 1fr;
+      gap: 14px;
+      align-items: center;
+    }
+    .preview-frame {
+      min-height: 120px;
+      border: 1px solid #3a3a3c;
+      border-radius: 10px;
+      background:
+        linear-gradient(45deg, #252527 25%, transparent 25%),
+        linear-gradient(-45deg, #252527 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #252527 75%),
+        linear-gradient(-45deg, transparent 75%, #252527 75%);
+      background-color: #1c1c1e;
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      cursor: zoom-in;
+    }
+    .preview-frame.is-empty {
+      cursor: default;
+    }
+    #compressedPreviewImg {
+      display: none;
+      width: 100%;
+      height: 100%;
+      max-height: 220px;
+      object-fit: contain;
+    }
+    #compressedPreviewPlaceholder {
+      padding: 16px;
+      color: #777;
+      font-size: 0.82rem;
+      text-align: center;
+      line-height: 1.5;
+    }
+    .preview-meta {
+      color: #aaa;
+      font-size: 0.84rem;
+      line-height: 1.7;
+    }
+    .preview-meta span {
+      color: #e0e0e0;
+      font-weight: 500;
+    }
+    .preview-zoom-hint {
+      color: #777;
+      font-size: 0.78rem;
+      margin-top: 6px;
+    }
+
+    /* 100%プレビューモーダル */
+    #previewModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0,0,0,0.86);
+      padding: 20px;
+    }
+    #previewModal.open {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .modal-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      color: #e0e0e0;
+      font-size: 0.88rem;
+    }
+    #previewModalInfo {
+      color: #aaa;
+      line-height: 1.5;
+    }
+    .modal-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+      flex: 0 0 auto;
+    }
+    .modal-close,
+    .modal-zoom-btn {
+      border: 1px solid #555;
+      border-radius: 20px;
+      background: #2c2c2e;
+      color: #e0e0e0;
+      cursor: pointer;
+      padding: 8px 14px;
+      font-size: 0.86rem;
+      flex: 0 0 auto;
+    }
+    .modal-close:hover,
+    .modal-zoom-btn:hover { background: #3a3a3c; }
+    .modal-zoom-btn.active {
+      background: #0a84ff;
+      border-color: #0a84ff;
+      color: #fff;
+      font-weight: 600;
+    }
+    .modal-scroll {
+      flex: 1;
+      overflow: auto;
+      border: 1px solid #3a3a3c;
+      border-radius: 12px;
+      background:
+        linear-gradient(45deg, #252527 25%, transparent 25%),
+        linear-gradient(-45deg, #252527 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #252527 75%),
+        linear-gradient(-45deg, transparent 75%, #252527 75%);
+      background-color: #1c1c1e;
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+    }
+    #previewModalImg {
+      display: block;
+      width: auto;
+      height: auto;
+      max-width: none;
+      max-height: none;
+    }
+    @media (max-width: 680px) {
+      .preview-body { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -366,6 +527,24 @@
       <div><span id="counter">-</span></div>
     </div>
 
+    <!-- 圧縮後プレビュー -->
+    <div id="compressedPreview">
+      <div class="preview-header">
+        <div class="preview-title">圧縮後プレビュー</div>
+        <div class="preview-status" id="compressedPreviewStatus">JPG 95%</div>
+      </div>
+      <div class="preview-body">
+        <div class="preview-frame is-empty" id="compressedPreviewFrame" title="圧縮後プレビューを100%表示">
+          <img id="compressedPreviewImg" alt="圧縮後プレビュー">
+          <div id="compressedPreviewPlaceholder">画像を選択すると、保存形式と画質に応じたプレビューを表示します。</div>
+        </div>
+        <div>
+          <div class="preview-meta" id="compressedPreviewMeta">画質ボタンを切り替えると、ここに圧縮後の見え方と容量を反映します。</div>
+          <div class="preview-zoom-hint" id="compressedPreviewHint">プレビュー生成後、画像をクリックすると100%表示できます。</div>
+        </div>
+      </div>
+    </div>
+
     <!-- 品質チェック -->
     <div id="qualityCheck">
       <div class="qc-title">出力品質チェック（長辺基準）</div>
@@ -392,6 +571,21 @@
     </div>
   </div>
 
+  <div id="previewModal" aria-hidden="true">
+    <div class="modal-toolbar">
+      <div id="previewModalInfo">圧縮後プレビュー 100%表示</div>
+      <div class="modal-actions">
+        <button class="modal-zoom-btn active" type="button" data-zoom="1">100%</button>
+        <button class="modal-zoom-btn" type="button" data-zoom="2">200%</button>
+        <button class="modal-zoom-btn" type="button" data-zoom="4">400%</button>
+        <button class="modal-close" id="previewModalClose" type="button">閉じる ✕</button>
+      </div>
+    </div>
+    <div class="modal-scroll" id="previewModalScroll">
+      <img id="previewModalImg" alt="圧縮後プレビュー 100%表示">
+    </div>
+  </div>
+
 <script>
   // ===== 状態 =====
   const state = {
@@ -407,6 +601,8 @@
     outputQuality: 0.95, // JPG / WebP の画質
     fileSizeTimer: null,
     fileSizeSeq: 0,
+    previewUrl: null,
+    previewZoom: 1,
   };
 
   const canvas = document.getElementById('cropCanvas');
@@ -414,6 +610,23 @@
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
   const editor = document.getElementById('editor');
+  const compressedPreviewFrame = document.getElementById('compressedPreviewFrame');
+  const previewModal = document.getElementById('previewModal');
+  const previewModalImg = document.getElementById('previewModalImg');
+  const previewModalInfo = document.getElementById('previewModalInfo');
+  const previewModalClose = document.getElementById('previewModalClose');
+
+  compressedPreviewFrame.addEventListener('click', openPreviewModal);
+  previewModalClose.addEventListener('click', closePreviewModal);
+  document.querySelectorAll('.modal-zoom-btn').forEach(btn => {
+    btn.addEventListener('click', () => setPreviewZoom(parseFloat(btn.dataset.zoom)));
+  });
+  previewModal.addEventListener('click', e => {
+    if (e.target === previewModal) closePreviewModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && previewModal.classList.contains('open')) closePreviewModal();
+  });
 
   // ===== ファイル読み込み =====
   fileInput.addEventListener('change', e => loadFiles(e.target.files));
@@ -508,24 +721,41 @@
     }
   }
 
+  function calculateOutputSize() {
+    if (state.outputSize === 0) {
+      return {
+        outW: Math.round(state.crop.w),
+        outH: Math.round(state.crop.h),
+      };
+    }
+
+    const cropRatio = state.crop.w > 0 && state.crop.h > 0
+      ? state.crop.w / state.crop.h
+      : state.aspectW / state.aspectH;
+
+    if (cropRatio >= 1) {
+      return {
+        outW: state.outputSize,
+        outH: Math.round(state.outputSize / cropRatio),
+      };
+    }
+
+    return {
+      outW: Math.round(state.outputSize * cropRatio),
+      outH: state.outputSize,
+    };
+  }
+
   function updateOutSizeDisplay() {
     const el = document.getElementById('outSize');
-    let outW, outH;
+    const { outW, outH } = calculateOutputSize();
+
     if (state.outputSize === 0) {
-      outW = Math.round(state.crop.w);
-      outH = Math.round(state.crop.h);
       el.textContent = `${outW} × ${outH} px（原寸）`;
     } else {
-      const ratio = state.aspectW / state.aspectH;
-      if (ratio >= 1) {
-        outW = state.outputSize;
-        outH = Math.round(state.outputSize / ratio);
-      } else {
-        outH = state.outputSize;
-        outW = Math.round(state.outputSize * ratio);
-      }
       el.textContent = `${outW} × ${outH} px`;
     }
+
     updateQualityCheck(outW, outH);
     scheduleFileSizeEstimate(outW, outH);
   }
@@ -573,10 +803,107 @@
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
 
+  function getQualityLabel() {
+    if (state.outputFormat === 'png') return 'PNGは画質圧縮の対象外';
+    return `${Math.round(state.outputQuality * 100)}%`;
+  }
+
+  function updatePreviewModalInfo() {
+    const { outW, outH } = calculateOutputSize();
+    previewModalInfo.textContent =
+      `圧縮後プレビュー ${Math.round(state.previewZoom * 100)}%表示 / ` +
+      `${state.outputFormat.toUpperCase()} / ${getQualityLabel()} / ${outW} × ${outH} px`;
+  }
+
+  function setPreviewZoom(zoom) {
+    state.previewZoom = zoom;
+    const { outW } = calculateOutputSize();
+    previewModalImg.style.width = `${outW * zoom}px`;
+    previewModalImg.style.height = 'auto';
+
+    document.querySelectorAll('.modal-zoom-btn').forEach(btn => {
+      btn.classList.toggle('active', parseFloat(btn.dataset.zoom) === zoom);
+    });
+    updatePreviewModalInfo();
+  }
+
+  function openPreviewModal() {
+    if (!state.previewUrl) return;
+
+    previewModalImg.src = state.previewUrl;
+    previewModal.classList.add('open');
+    previewModal.setAttribute('aria-hidden', 'false');
+    setPreviewZoom(1);
+  }
+
+  function closePreviewModal() {
+    previewModal.classList.remove('open');
+    previewModal.setAttribute('aria-hidden', 'true');
+    previewModalImg.removeAttribute('src');
+  }
+
+  function clearCompressedPreview(message, meta = '') {
+    const img = document.getElementById('compressedPreviewImg');
+    const placeholder = document.getElementById('compressedPreviewPlaceholder');
+    const metaEl = document.getElementById('compressedPreviewMeta');
+
+    closePreviewModal();
+
+    if (state.previewUrl) {
+      URL.revokeObjectURL(state.previewUrl);
+      state.previewUrl = null;
+    }
+
+    compressedPreviewFrame.classList.add('is-empty');
+    img.removeAttribute('src');
+    img.style.display = 'none';
+    placeholder.style.display = 'block';
+    placeholder.textContent = message;
+    metaEl.textContent = meta;
+  }
+
+  function setCompressedPreview(blob, outW, outH) {
+    const img = document.getElementById('compressedPreviewImg');
+    const placeholder = document.getElementById('compressedPreviewPlaceholder');
+    const metaEl = document.getElementById('compressedPreviewMeta');
+
+    if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+    state.previewUrl = URL.createObjectURL(blob);
+
+    img.src = state.previewUrl;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+    compressedPreviewFrame.classList.remove('is-empty');
+
+    if (previewModal.classList.contains('open')) {
+      previewModalImg.src = state.previewUrl;
+      setPreviewZoom(state.previewZoom);
+    }
+
+    const formatName = state.outputFormat.toUpperCase();
+    metaEl.innerHTML =
+      `形式: <span>${formatName}</span><br>` +
+      `画質: <span>${getQualityLabel()}</span><br>` +
+      `出力サイズ: <span>${outW} × ${outH} px</span><br>` +
+      `推定容量: <span>${formatBytes(blob.size)}</span>`;
+  }
+
+  function updateCompressedPreviewStatus() {
+    const status = document.getElementById('compressedPreviewStatus');
+    if (state.outputFormat === 'png') {
+      status.textContent = 'PNGは対象外';
+    } else {
+      status.textContent = `${state.outputFormat.toUpperCase()} ${getQualityLabel()}`;
+    }
+  }
+
   function scheduleFileSizeEstimate(outW, outH) {
     const el = document.getElementById('fileSizeInfo');
+    updateCompressedPreviewStatus();
+
     if (!canvas._img) {
       el.textContent = '-';
+      clearCompressedPreview('画像を選択すると、保存形式と画質に応じたプレビューを表示します。');
       return;
     }
 
@@ -584,17 +911,45 @@
     clearTimeout(state.fileSizeTimer);
     const seq = ++state.fileSizeSeq;
 
+    if (state.outputFormat === 'png') {
+      clearCompressedPreview(
+        'PNGは画質圧縮の対象外です。JPGまたはWebPを選ぶと圧縮後プレビューを表示します。',
+        `形式: PNG / 出力サイズ: ${outW} × ${outH} px / 容量を計算中…`
+      );
+    } else {
+      clearCompressedPreview(
+        '圧縮後プレビューを生成中…',
+        `形式: ${state.outputFormat.toUpperCase()} / 画質: ${getQualityLabel()} / 容量を計算中…`
+      );
+    }
+
     state.fileSizeTimer = setTimeout(() => {
       const format = getFormatConfig();
       const out = drawOutputCanvas(outW, outH);
       if (!out || !out.toBlob) {
         el.textContent = '-';
+        clearCompressedPreview('このブラウザではプレビューを生成できませんでした。');
         return;
       }
 
       out.toBlob(blob => {
         if (seq !== state.fileSizeSeq) return;
         el.textContent = blob ? formatBytes(blob.size) : '-';
+        if (!blob) {
+          clearCompressedPreview('プレビューを生成できませんでした。');
+          return;
+        }
+
+        if (state.outputFormat === 'png') {
+          document.getElementById('compressedPreviewMeta').innerHTML =
+            `形式: <span>PNG</span><br>` +
+            `画質: <span>PNGは画質圧縮の対象外</span><br>` +
+            `出力サイズ: <span>${outW} × ${outH} px</span><br>` +
+            `推定容量: <span>${formatBytes(blob.size)}</span>`;
+          return;
+        }
+
+        setCompressedPreview(blob, outW, outH);
       }, format.mime, format.quality);
     }, 250);
   }
@@ -830,6 +1185,10 @@
   function resetViewer() {
     state.images = [];
     state.current = 0;
+    clearTimeout(state.fileSizeTimer);
+    state.fileSizeSeq++;
+    clearCompressedPreview('画像を選択すると、保存形式と画質に応じたプレビューを表示します。');
+    document.getElementById('fileSizeInfo').textContent = '-';
     fileInput.value = '';
     editor.style.display = 'none';
     dropZone.style.display = 'block';
@@ -838,6 +1197,7 @@
   // ===== キーボードで微調整 =====
   document.addEventListener('keydown', e => {
     if (state.images.length === 0) return;
+    if (previewModal.classList.contains('open')) return;
     // 入力欄にフォーカスがある場合は無視
     if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
 
@@ -861,21 +1221,7 @@
   function downloadCrop() {
     const img = canvas._img;
     // 出力サイズを計算（長辺基準）
-    let outW, outH;
-    if (state.outputSize === 0) {
-      // 原寸
-      outW = Math.round(state.crop.w);
-      outH = Math.round(state.crop.h);
-    } else {
-      const ratio = state.crop.w / state.crop.h;
-      if (ratio >= 1) {
-        outW = state.outputSize;
-        outH = Math.round(state.outputSize / ratio);
-      } else {
-        outH = state.outputSize;
-        outW = Math.round(state.outputSize * ratio);
-      }
-    }
+    const { outW, outH } = calculateOutputSize();
 
     // アップスケール警告（元のクロップサイズより出力サイズが大きい時）
     const cropLong = Math.max(state.crop.w, state.crop.h);
