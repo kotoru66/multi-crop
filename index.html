@@ -218,6 +218,60 @@
       color: #000;
       font-weight: 600;
     }
+    .custom-size-input {
+      width: 90px;
+      padding: 6px 12px;
+      border: 1px solid #555;
+      border-radius: 20px;
+      background: #2c2c2e;
+      color: #e0e0e0;
+      font-size: 0.82rem;
+      text-align: right;
+    }
+    .custom-size-input:focus { outline: none; border-color: #4cd964; }
+    .custom-size-input.active {
+      border-color: #4cd964;
+      color: #4cd964;
+      font-weight: 600;
+    }
+    .size-basis-select {
+      padding: 6px 10px;
+      border: 1px solid #555;
+      border-radius: 20px;
+      background: #2c2c2e;
+      color: #e0e0e0;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    .no-upscale-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: #aaa;
+      font-size: 0.82rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .no-upscale-label input { accent-color: #4cd964; }
+    .dpi-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: #aaa;
+      font-size: 0.82rem;
+    }
+    .dpi-input {
+      width: 60px;
+      padding: 6px 10px;
+      border: 1px solid #555;
+      border-radius: 20px;
+      background: #2c2c2e;
+      color: #e0e0e0;
+      font-size: 0.82rem;
+      text-align: right;
+    }
+    .dpi-input:focus { outline: none; border-color: #4cd964; }
+    .dpi-input:disabled { opacity: 0.35; }
     .format-btn {
       padding: 7px 16px;
       border: 1px solid #555;
@@ -551,7 +605,8 @@
           <ol>
             <li>画像をドラッグ＆ドロップするか、クリックして画像ファイルを選びます。</li>
             <li>切り抜きたい比率を選びます。</li>
-            <li>出力サイズを選びます。</li>
+            <li>出力サイズを選びます（ボタンのほか、任意のピクセル数も入力できます）。</li>
+            <li>印刷用に納品する場合は、解像度（pixel/inch）を指定します。Web用なら72のままでOKです。</li>
             <li>保存形式と画質を選びます。</li>
             <li>必要なら圧縮後プレビューを確認します。</li>
             <li>「ダウンロード」を押して保存します。</li>
@@ -562,9 +617,30 @@
           <ul>
             <li>複数画像をまとめて読み込み</li>
             <li>1:1 / 3:2 / 4:3 / 16:9 などに切り抜き</li>
+            <li>出力サイズを自由指定（プリセット＋任意のピクセル数）</li>
+            <li>サイズの基準を選択（長辺 / 短辺 / 幅 / 高さ）</li>
+            <li>解像度（pixel/inch）の指定 ※JPG / PNGのみ</li>
             <li>JPG / PNG / WebP で保存</li>
             <li>画質変更と予想容量の確認</li>
             <li>圧縮後プレビューを100% / 200% / 400%で確認</li>
+          </ul>
+        </section>
+      </div>
+      <div class="usage-grid">
+        <section>
+          <h2>サイズと解像度のちがい</h2>
+          <ul>
+            <li><strong>ピクセル数の指定</strong>：画素データを作り直します。容量・画質が変わります。</li>
+            <li><strong>解像度（pixel/inch）の指定</strong>：印刷サイズの目安を書き込むだけ。ピクセル数・容量・画質は変わりません。Photoshopの「再サンプルなし」と同じ動作です。</li>
+            <li>印刷入稿の例：「350dpiでA4幅（21cm）」なら、必要ピクセル数は 350 × 21 ÷ 2.54 ≒ 2894px。ピクセル数欄に2894、解像度欄に350を入れます。</li>
+          </ul>
+        </section>
+        <section>
+          <h2>拡大（アップスケール）について</h2>
+          <ul>
+            <li>元画像より大きいピクセル数を指定すると、確認の警告が出ます。</li>
+            <li>そのまま出力すると、足りないピクセルを周囲から補間して埋めるため、ぼやけた仕上がりになります。</li>
+            <li><strong>「拡大しない」にチェック</strong>を入れると、大きいサイズを指定しても自動で原寸に抑えられます。普段はチェックを入れておくのがおすすめです。</li>
           </ul>
         </section>
       </div>
@@ -594,11 +670,22 @@
 
     <!-- 出力サイズ選択 -->
     <div class="ratio-selector">
+      <select id="sizeBasisSelect" class="size-basis-select" title="サイズの基準">
+        <option value="long">長辺</option>
+        <option value="short">短辺</option>
+        <option value="width">幅</option>
+        <option value="height">高さ</option>
+      </select>
       <button class="size-btn" data-size="500">500px</button>
       <button class="size-btn active" data-size="1000">1000px</button>
       <button class="size-btn" data-size="2000">2000px</button>
       <button class="size-btn" data-size="4000">4000px</button>
+      <input type="number" id="customSizeInput" class="custom-size-input" min="1" max="30000" step="1" placeholder="任意 px">
       <button class="size-btn" data-size="0">原寸</button>
+      <label class="no-upscale-label"><input type="checkbox" id="noUpscaleChk"> 拡大しない</label>
+      <label class="dpi-label" id="dpiLabel">解像度:
+        <input type="number" id="dpiInput" class="dpi-input" min="1" max="9999" step="1" value="72"> pixel/inch
+      </label>
     </div>
 
     <!-- 保存形式選択 -->
@@ -709,7 +796,10 @@
     crop: { x: 0, y: 0, w: 0, h: 0 },  // 元画像座標系
     dragging: null,      // 'move' | 'nw' | 'ne' | 'sw' | 'se' | null
     dragStart: null,
-    outputSize: 1000,    // 長辺の出力サイズ（0 = 原寸）
+    outputSize: 1000,    // 出力サイズpx（0 = 原寸）
+    sizeBasis: 'long',   // long=長辺 | short=短辺 | width=幅 | height=高さ
+    noUpscale: false,    // true なら元ピクセルを超える拡大をしない
+    outputDpi: 72,       // 解像度（pixel/inch）。JPG/PNGのみ書き込み
     outputFormat: 'jpg', // jpg | png | webp
     outputQuality: 0.95, // JPG / WebP の画質
     fileSizeTimer: null,
@@ -788,14 +878,55 @@
   });
 
   // ===== 出力サイズ切替 =====
+  const customSizeInput = document.getElementById('customSizeInput');
+
   document.querySelectorAll('.size-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+      customSizeInput.classList.remove('active');
       btn.classList.add('active');
       state.outputSize = parseInt(btn.dataset.size);
       updateOutSizeDisplay();
     });
   });
+
+  // カスタムサイズ入力（数値を入れるとそのpx数が選択状態になる）
+  function applyCustomSize() {
+    const v = parseInt(customSizeInput.value);
+    if (!v || v < 1) return;
+    document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+    customSizeInput.classList.add('active');
+    state.outputSize = Math.min(v, 30000);
+    updateOutSizeDisplay();
+  }
+  customSizeInput.addEventListener('input', applyCustomSize);
+  customSizeInput.addEventListener('focus', applyCustomSize);
+
+  // サイズの基準（長辺/短辺/幅/高さ）
+  document.getElementById('sizeBasisSelect').addEventListener('change', e => {
+    state.sizeBasis = e.target.value;
+    updateOutSizeDisplay();
+  });
+
+  // 拡大しない
+  document.getElementById('noUpscaleChk').addEventListener('change', e => {
+    state.noUpscale = e.target.checked;
+    updateOutSizeDisplay();
+  });
+
+  // 解像度（DPI）
+  const dpiInput = document.getElementById('dpiInput');
+  dpiInput.addEventListener('input', () => {
+    const v = parseInt(dpiInput.value);
+    if (v >= 1) state.outputDpi = Math.min(v, 9999);
+  });
+
+  function updateDpiControls() {
+    const unsupported = state.outputFormat === 'webp';
+    dpiInput.disabled = unsupported;
+    document.getElementById('dpiLabel').title =
+      unsupported ? 'WebPは解像度メタデータに非対応です' : '書き出すJPG/PNGに解像度情報を埋め込みます';
+  }
 
   // ===== 保存形式切替 =====
   document.querySelectorAll('.format-btn').forEach(btn => {
@@ -805,6 +936,7 @@
       state.outputFormat = btn.dataset.format;
       document.getElementById('formatInfo').textContent = state.outputFormat.toUpperCase();
       updateQualityControls();
+      updateDpiControls();
       updateOutSizeDisplay();
     });
   });
@@ -835,36 +967,54 @@
   }
 
   function calculateOutputSize() {
+    const cropW = Math.round(state.crop.w);
+    const cropH = Math.round(state.crop.h);
+
     if (state.outputSize === 0) {
-      return {
-        outW: Math.round(state.crop.w),
-        outH: Math.round(state.crop.h),
-      };
+      return { outW: cropW, outH: cropH };
     }
 
     const cropRatio = state.crop.w > 0 && state.crop.h > 0
       ? state.crop.w / state.crop.h
       : state.aspectW / state.aspectH;
 
-    if (cropRatio >= 1) {
-      return {
-        outW: state.outputSize,
-        outH: Math.round(state.outputSize / cropRatio),
-      };
+    const size = state.outputSize;
+    let outW, outH;
+
+    switch (state.sizeBasis) {
+      case 'width':
+        outW = size;
+        outH = Math.round(size / cropRatio);
+        break;
+      case 'height':
+        outH = size;
+        outW = Math.round(size * cropRatio);
+        break;
+      case 'short':
+        if (cropRatio >= 1) { outH = size; outW = Math.round(size * cropRatio); }
+        else                { outW = size; outH = Math.round(size / cropRatio); }
+        break;
+      default: // long = 長辺
+        if (cropRatio >= 1) { outW = size; outH = Math.round(size / cropRatio); }
+        else                { outH = size; outW = Math.round(size * cropRatio); }
     }
 
-    return {
-      outW: Math.round(state.outputSize * cropRatio),
-      outH: state.outputSize,
-    };
+    // 拡大しない：切り抜き範囲の元ピクセルを超える場合は原寸に抑える
+    if (state.noUpscale && cropW > 0 && (outW > cropW || outH > cropH)) {
+      return { outW: cropW, outH: cropH, clamped: true };
+    }
+
+    return { outW, outH };
   }
 
   function updateOutSizeDisplay() {
     const el = document.getElementById('outSize');
-    const { outW, outH } = calculateOutputSize();
+    const { outW, outH, clamped } = calculateOutputSize();
 
     if (state.outputSize === 0) {
       el.textContent = `${outW} × ${outH} px（原寸）`;
+    } else if (clamped) {
+      el.textContent = `${outW} × ${outH} px（拡大しないため原寸）`;
     } else {
       el.textContent = `${outW} × ${outH} px`;
     }
@@ -1331,6 +1481,92 @@
   });
 
   // ===== ダウンロード =====
+  // ===== 解像度（DPI）メタデータ書き込み =====
+  // ブラウザは解像度情報を書き出せないため、生成後のファイルのヘッダを直接書き換える
+
+  function setJpegDpi(bytes, dpi) {
+    if (bytes[0] !== 0xFF || bytes[1] !== 0xD8) return bytes; // JPEGでなければ何もしない
+    // 先頭にJFIF APP0セグメントがある場合はdensityフィールドを書き換え
+    if (bytes[2] === 0xFF && bytes[3] === 0xE0 &&
+        bytes[6] === 0x4A && bytes[7] === 0x46 && bytes[8] === 0x49 &&
+        bytes[9] === 0x46 && bytes[10] === 0x00) {
+      bytes[13] = 1;                    // units: 1 = dots/inch
+      bytes[14] = (dpi >> 8) & 0xFF;    // X density
+      bytes[15] = dpi & 0xFF;
+      bytes[16] = (dpi >> 8) & 0xFF;    // Y density
+      bytes[17] = dpi & 0xFF;
+      return bytes;
+    }
+    // JFIFヘッダが無い場合はAPP0セグメントを挿入
+    const app0 = new Uint8Array([
+      0xFF, 0xE0, 0x00, 0x10,                    // APP0マーカー + 長さ16
+      0x4A, 0x46, 0x49, 0x46, 0x00,              // "JFIF\0"
+      0x01, 0x01,                                // バージョン1.1
+      0x01,                                      // units: dots/inch
+      (dpi >> 8) & 0xFF, dpi & 0xFF,             // X density
+      (dpi >> 8) & 0xFF, dpi & 0xFF,             // Y density
+      0x00, 0x00,                                // サムネイルなし
+    ]);
+    const outArr = new Uint8Array(bytes.length + app0.length);
+    outArr.set(bytes.subarray(0, 2), 0);
+    outArr.set(app0, 2);
+    outArr.set(bytes.subarray(2), 2 + app0.length);
+    return outArr;
+  }
+
+  function crc32(buf) {
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < buf.length; i++) {
+      crc ^= buf[i];
+      for (let k = 0; k < 8; k++) {
+        crc = (crc & 1) ? ((crc >>> 1) ^ 0xEDB88320) : (crc >>> 1);
+      }
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function setPngDpi(bytes, dpi) {
+    const ppm = Math.round(dpi / 0.0254); // pixels per meter
+    // pHYsチャンクを組み立てる
+    const chunk = new Uint8Array(21);
+    const dv = new DataView(chunk.buffer);
+    dv.setUint32(0, 9);                                  // データ長
+    chunk.set([0x70, 0x48, 0x59, 0x73], 4);              // "pHYs"
+    dv.setUint32(8, ppm);                                // X pixels/m
+    dv.setUint32(12, ppm);                               // Y pixels/m
+    chunk[16] = 1;                                       // unit: meter
+    dv.setUint32(17, crc32(chunk.subarray(4, 17)));      // CRC（type+data）
+    // 既存のpHYsは置換、無ければ最初のIDATの手前に挿入
+    let pos = 8; // PNGシグネチャの直後
+    while (pos + 8 <= bytes.length) {
+      const len = new DataView(bytes.buffer, bytes.byteOffset + pos, 4).getUint32(0);
+      const type = String.fromCharCode(bytes[pos + 4], bytes[pos + 5], bytes[pos + 6], bytes[pos + 7]);
+      if (type === 'pHYs') {
+        const outArr = new Uint8Array(bytes.length - (len + 12) + 21);
+        outArr.set(bytes.subarray(0, pos), 0);
+        outArr.set(chunk, pos);
+        outArr.set(bytes.subarray(pos + len + 12), pos + 21);
+        return outArr;
+      }
+      if (type === 'IDAT') {
+        const outArr = new Uint8Array(bytes.length + 21);
+        outArr.set(bytes.subarray(0, pos), 0);
+        outArr.set(chunk, pos);
+        outArr.set(bytes.subarray(pos), pos + 21);
+        return outArr;
+      }
+      pos += len + 12;
+    }
+    return bytes;
+  }
+
+  function applyDpi(bytes, format, dpi) {
+    if (!dpi || dpi < 1) return bytes;
+    if (format.ext === 'jpg') return setJpegDpi(bytes, dpi);
+    if (format.ext === 'png') return setPngDpi(bytes, dpi);
+    return bytes; // WebPは非対応
+  }
+
   function downloadCrop() {
     const img = canvas._img;
     // 出力サイズを計算（長辺基準）
@@ -1359,10 +1595,21 @@
     const ratioTag = `${state.aspectW}x${state.aspectH}`;
     const sizeTag = state.outputSize === 0 ? 'orig' : `${state.outputSize}px`;
     const format = getFormatConfig();
+
+    // 画像を生成し、解像度（DPI）をファイルに書き込んでからダウンロード
+    const dataUrl = out.toDataURL(format.mime, format.quality);
+    const bin = atob(dataUrl.split(',')[1]);
+    let bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    bytes = applyDpi(bytes, format, state.outputDpi);
+
+    const blob = new Blob([bytes], { type: format.mime });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.download = `${baseName}_${ratioTag}_${sizeTag}.${format.ext}`;
-    link.href = out.toDataURL(format.mime, format.quality);
+    link.href = url;
     link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
 
     // ダウンロード後、次の画像へ自動で進む
     if (state.current < state.images.length - 1) {
